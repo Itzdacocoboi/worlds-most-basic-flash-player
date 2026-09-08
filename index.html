@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>worlds most basic flash player</title>
+    <title>Offline Arcade & Library</title>
     <!-- Ruffle Flash Emulator CDN -->
     <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
     <style>
       :root {
-        --card-bg: rgba(15, 23, 42, 0.8);
+        --card-bg: rgba(15, 23, 42, 0.85);
         --accent-color: #6366f1;
         --accent-hover: #4f46e5;
         --danger-color: #ef4444;
@@ -30,27 +30,19 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: flex-start;
         padding: 24px;
-        position: relative;
-        overflow-x: hidden;
-        background-color: #0f172a;
+        background-color: #000000;
+        transition: background-color 0.3s ease;
       }
 
-      /* Animated Dynamic Canvas Background */
-      #bg-canvas, #custom-bg-video {
+      #bg-canvas {
         position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
         height: 100vh;
         z-index: -1;
-        object-fit: cover;
         pointer-events: none;
-      }
-
-      #custom-bg-video {
-        display: none;
       }
 
       .app-container {
@@ -93,7 +85,6 @@
         flex-wrap: wrap;
       }
 
-      /* Custom Controls */
       .btn {
         background: rgba(255, 255, 255, 0.08);
         color: var(--text-color);
@@ -123,22 +114,49 @@
         background-color: var(--accent-hover);
       }
 
-      .btn:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
+      /* Preset Colors Styling */
+      .preset-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(0, 0, 0, 0.4);
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
       }
 
-      select.btn {
-        background-color: #1e293b;
-        color: var(--text-color);
-        outline: none;
+      .preset-container label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+
+      .color-presets {
+        display: flex;
+        gap: 6px;
+      }
+
+      .color-swatch {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: transform 0.15s ease, border-color 0.15s ease;
+      }
+
+      .color-swatch:hover {
+        transform: scale(1.15);
+      }
+
+      .color-swatch.active {
+        border-color: #ffffff;
+        transform: scale(1.1);
       }
 
       input[type="file"] {
         display: none;
       }
 
-      /* Game Player */
       #player-wrapper {
         position: relative;
         width: 100%;
@@ -161,14 +179,6 @@
         gap: 12px;
       }
 
-      .placeholder svg {
-        width: 48px;
-        height: 48px;
-        stroke: var(--text-muted);
-        opacity: 0.6;
-      }
-
-      /* Grid Library with Covers */
       .library-section {
         display: flex;
         flex-direction: column;
@@ -179,11 +189,6 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-      }
-
-      .library-title {
-        font-size: 1.1rem;
-        font-weight: 600;
       }
 
       .game-grid {
@@ -200,7 +205,6 @@
         display: flex;
         flex-direction: column;
         transition: transform 0.2s ease, border-color 0.2s ease;
-        position: relative;
       }
 
       .game-card:hover {
@@ -216,7 +220,6 @@
         align-items: center;
         justify-content: center;
         overflow: hidden;
-        position: relative;
       }
 
       .cover-img {
@@ -248,16 +251,13 @@
       .card-actions {
         display: flex;
         justify-content: space-between;
-        align-items: center;
       }
 
       .btn-sm {
         padding: 4px 8px;
         font-size: 0.75rem;
-        border-radius: 4px;
       }
 
-      /* Modal Dialog */
       .modal-overlay {
         position: fixed;
         top: 0;
@@ -281,11 +281,6 @@
         display: flex;
         flex-direction: column;
         gap: 16px;
-      }
-
-      .modal-title {
-        font-size: 1.1rem;
-        font-weight: 600;
       }
 
       .input-group {
@@ -316,107 +311,168 @@
     </style>
   </head>
   <body>
-    <!-- Background Elements -->
     <canvas id="bg-canvas"></canvas>
-    <video id="custom-bg-video" autoplay loop muted playsinline></video>
 
     <div class="app-container">
       <div class="header">
-        <h1 class="title">Flash Arcade Player</h1>
+        <h1 class="title">Offline Arcade & Library</h1>
 
         <div class="controls">
-          <!-- Animated Background Selection -->
-          <select id="bg-select" class="btn">
-            <option value="particles">Animated Particles</option>
-            <option value="waves">Gradient Waves</option>
-            <option value="custom">Custom Video / Animated GIF</option>
-          </select>
-          <input type="file" id="custom-bg-input" accept="video/mp4, video/webm, image/gif" />
+          <!-- Preset Color Picker -->
+          <div class="preset-container">
+            <label>Particles:</label>
+            <div class="color-presets" id="color-presets"></div>
+          </div>
 
-          <!-- SWF File Selector -->
           <button class="btn btn-primary" onclick="document.getElementById('add-game-modal').style.display='flex'">
-            + Add New Game
+            + Add Game
           </button>
 
-          <!-- Fullscreen Switch -->
           <button id="fullscreen-btn" class="btn" disabled>Full Screen</button>
         </div>
       </div>
 
-      <!-- Main Game Viewport -->
       <div id="player-wrapper">
         <div class="placeholder" id="placeholder">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          <p>Select a SWF game from your library below to play</p>
+          <p>Select a game below to start playing</p>
         </div>
       </div>
 
-      <!-- Games Storage Section -->
       <div class="library-section">
         <div class="library-header">
-          <h2 class="library-title">Saved SWF Games Storage</h2>
+          <h2>Stored Games</h2>
         </div>
         <div class="game-grid" id="game-grid">
-          <p style="color: var(--text-muted); font-size: 0.875rem;">No games added yet. Click "+ Add New Game" to store SWF files with custom covers.</p>
+          <p style="color: var(--text-muted); font-size: 0.875rem;">Loading saved games...</p>
         </div>
       </div>
     </div>
 
-    <!-- Add Game Modal -->
     <div class="modal-overlay" id="add-game-modal">
       <div class="modal">
-        <h3 class="modal-title">Add Game to Storage</h3>
-        
+        <h3>Add Game</h3>
         <div class="input-group">
           <label>Game Title</label>
-          <input type="text" id="modal-title-input" placeholder="e.g. Alien Hominid" />
+          <input type="text" id="modal-title-input" placeholder="Game Name" />
         </div>
-
         <div class="input-group">
-          <label>SWF Game File</label>
+          <label>SWF File</label>
           <button class="btn" onclick="document.getElementById('modal-swf-file').click()">Choose .SWF File</button>
           <input type="file" id="modal-swf-file" accept=".swf" />
           <span id="swf-file-name" style="font-size:0.75rem; color: var(--text-muted);">No file chosen</span>
         </div>
-
         <div class="input-group">
-          <label>Custom Cover Image (Optional)</label>
-          <button class="btn" onclick="document.getElementById('modal-cover-file').click()">Choose Image File</button>
+          <label>Cover Image (Optional)</label>
+          <button class="btn" onclick="document.getElementById('modal-cover-file').click()">Choose Cover</button>
           <input type="file" id="modal-cover-file" accept="image/*" />
           <span id="cover-file-name" style="font-size:0.75rem; color: var(--text-muted);">No cover chosen</span>
         </div>
-
-        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
           <button class="btn" onclick="closeModal()">Cancel</button>
-          <button class="btn btn-primary" onclick="saveGame()">Save Game</button>
+          <button class="btn btn-primary" onclick="saveGame()">Add Game</button>
         </div>
       </div>
     </div>
 
     <script>
-      // Runtime Storage (In-Memory)
       let gameStorage = [];
-
-      // Element References
       const wrapper = document.getElementById('player-wrapper');
       const fullscreenBtn = document.getElementById('fullscreen-btn');
       const gameGrid = document.getElementById('game-grid');
-      const bgSelect = document.getElementById('bg-select');
-      const customBgInput = document.getElementById('custom-bg-input');
-      const bgCanvas = document.getElementById('bg-canvas');
-      const customBgVideo = document.getElementById('custom-bg-video');
 
-      // Modal File inputs tracking
-      let tempSwfData = null;
-      let tempCoverData = null;
+      let tempSwfBase64 = null;
+      let tempCoverBase64 = null;
+
+      // 8 Preset Particle Colors
+      const presetColors = [
+        { name: 'Indigo', hex: '#6366f1' },
+        { name: 'Cyan', hex: '#06b6d4' },
+        { name: 'Emerald', hex: '#10b981' },
+        { name: 'Rose', hex: '#f43f5e' },
+        { name: 'Amber', hex: '#f59e0b' },
+        { name: 'Purple', hex: '#a855f7' },
+        { name: 'White', hex: '#ffffff' },
+        { name: 'Neon Green', hex: '#39ff14' }
+      ];
+
+      // Default particle color is Indigo (#6366f1)
+      let activeParticleColor = localStorage.getItem('arcade_particle_color') || '#6366f1';
+
+      // Setup Preset Buttons
+      const presetsContainer = document.getElementById('color-presets');
+      presetColors.forEach(preset => {
+        const swatch = document.createElement('div');
+        swatch.className = 'color-swatch';
+        swatch.style.backgroundColor = preset.hex;
+        swatch.title = preset.name;
+        
+        if (preset.hex === activeParticleColor) {
+          swatch.classList.add('active');
+        }
+
+        swatch.addEventListener('click', () => {
+          document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+          swatch.classList.add('active');
+          activeParticleColor = preset.hex;
+          localStorage.setItem('arcade_particle_color', preset.hex);
+        });
+
+        presetsContainer.appendChild(swatch);
+      });
+
+      // Initialize IndexedDB
+      let db;
+      const dbRequest = indexedDB.open("ArcadeLibraryDB", 1);
+
+      dbRequest.onupgradeneeded = (e) => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains("games")) {
+          db.createObjectStore("games", { keyPath: "id" });
+        }
+      };
+
+      dbRequest.onsuccess = (e) => {
+        db = e.target.result;
+        loadGamesFromDB();
+      };
+
+      dbRequest.onerror = () => {
+        console.error("IndexedDB error, unable to open storage.");
+      };
+
+      function loadGamesFromDB() {
+        if (!db) return;
+        const transaction = db.transaction(["games"], "readonly");
+        const store = transaction.objectStore("games");
+        const getAllRequest = store.getAll();
+
+        getAllRequest.onsuccess = () => {
+          gameStorage = getAllRequest.result || [];
+          renderStorage();
+        };
+      }
+
+      function saveGameToDB(gameObj) {
+        if (!db) return;
+        const transaction = db.transaction(["games"], "readwrite");
+        const store = transaction.objectStore("games");
+        store.put(gameObj);
+      }
+
+      function deleteGameFromDB(id) {
+        if (!db) return;
+        const transaction = db.transaction(["games"], "readwrite");
+        const store = transaction.objectStore("games");
+        store.delete(id);
+      }
 
       document.getElementById('modal-swf-file').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
           document.getElementById('swf-file-name').innerText = file.name;
           const reader = new FileReader();
-          reader.onload = (evt) => { tempSwfData = evt.target.result; };
-          reader.readAsArrayBuffer(file);
+          reader.onload = (evt) => { tempSwfBase64 = evt.target.result; };
+          reader.readAsDataURL(file);
         }
       });
 
@@ -425,7 +481,7 @@
         if (file) {
           document.getElementById('cover-file-name').innerText = file.name;
           const reader = new FileReader();
-          reader.onload = (evt) => { tempCoverData = evt.target.result; };
+          reader.onload = (evt) => { tempCoverBase64 = evt.target.result; };
           reader.readAsDataURL(file);
         }
       });
@@ -435,32 +491,33 @@
         document.getElementById('modal-title-input').value = '';
         document.getElementById('swf-file-name').innerText = 'No file chosen';
         document.getElementById('cover-file-name').innerText = 'No cover chosen';
-        tempSwfData = null;
-        tempCoverData = null;
+        tempSwfBase64 = null;
+        tempCoverBase64 = null;
       }
 
       function saveGame() {
         const title = document.getElementById('modal-title-input').value.trim();
-        if (!title || !tempSwfData) {
-          alert('Please enter a title and select a valid .SWF file.');
+        if (!title || !tempSwfBase64) {
+          alert('Please enter a title and select a .SWF file.');
           return;
         }
 
         const newGame = {
           id: Date.now(),
           title: title,
-          swfData: tempSwfData,
-          coverData: tempCoverData
+          swfData: tempSwfBase64,
+          coverData: tempCoverBase64
         };
 
         gameStorage.push(newGame);
+        saveGameToDB(newGame);
         renderStorage();
         closeModal();
       }
 
       function renderStorage() {
         if (gameStorage.length === 0) {
-          gameGrid.innerHTML = `<p style="color: var(--text-muted); font-size: 0.875rem;">No games added yet. Click "+ Add New Game" to store SWF files with custom covers.</p>`;
+          gameGrid.innerHTML = `<p style="color: var(--text-muted); font-size: 0.875rem;">No games added yet. Add a game to automatically save it in your browser.</p>`;
           return;
         }
 
@@ -468,17 +525,14 @@
         gameStorage.forEach((game) => {
           const card = document.createElement('div');
           card.className = 'game-card';
-          
           const coverHTML = game.coverData 
             ? `<img src="${game.coverData}" class="cover-img" alt="Cover" />` 
-            : `<span class="cover-placeholder">No Cover Image</span>`;
+            : `<span class="cover-placeholder">No Cover</span>`;
 
           card.innerHTML = `
-            <div class="cover-container">
-              ${coverHTML}
-            </div>
+            <div class="cover-container">${coverHTML}</div>
             <div class="game-card-body">
-              <div class="game-card-title" title="${game.title}">${game.title}</div>
+              <div class="game-card-title">${game.title}</div>
               <div class="card-actions">
                 <button class="btn btn-primary btn-sm" onclick="playGame(${game.id})">Play</button>
                 <button class="btn btn-sm" style="color:var(--danger-color)" onclick="deleteGame(${game.id})">Delete</button>
@@ -495,26 +549,30 @@
 
         wrapper.innerHTML = '';
         const ruffle = window.RufflePlayer ? window.RufflePlayer.newest() : null;
-        if (!ruffle) {
-          alert('Ruffle player failed to initialize.');
-          return;
-        }
+        if (!ruffle) return alert('Ruffle failed to load.');
 
         const player = ruffle.createPlayer();
         player.style.width = '100%';
         player.style.height = '100%';
         wrapper.appendChild(player);
 
-        player.load({ data: new Uint8Array(game.swfData) });
+        const base64Str = game.swfData.split(',')[1];
+        const binaryStr = atob(base64Str);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+
+        player.load({ data: bytes });
         fullscreenBtn.disabled = false;
       }
 
       function deleteGame(id) {
         gameStorage = gameStorage.filter(g => g.id !== id);
+        deleteGameFromDB(id);
         renderStorage();
       }
 
-      /* Fullscreen Controller */
       fullscreenBtn.addEventListener('click', () => {
         if (!document.fullscreenElement) {
           wrapper.requestFullscreen?.() || wrapper.webkitRequestFullscreen?.();
@@ -523,10 +581,9 @@
         }
       });
 
-      /* Canvas Background Animation System */
+      // Canvas Particle Background Engine
+      const bgCanvas = document.getElementById('bg-canvas');
       const ctx = bgCanvas.getContext('2d');
-      let currentAnimation = 'particles';
-      let animationFrameId = null;
 
       function resizeCanvas() {
         bgCanvas.width = window.innerWidth;
@@ -535,88 +592,42 @@
       window.addEventListener('resize', resizeCanvas);
       resizeCanvas();
 
-      // Particle Engine Setup
+      // Create 50 floating particles
       const particles = Array.from({ length: 50 }, () => ({
         x: Math.random() * window.innerWidth,
         y: Math.random() * window.innerHeight,
-        radius: Math.random() * 2 + 1,
+        radius: Math.random() * 2.5 + 1,
         dx: (Math.random() - 0.5) * 0.8,
-        dy: (Math.random() - 0.5) * 0.8
+        dy: (Math.random() - 0.5) * 0.8,
+        alpha: Math.random() * 0.5 + 0.3
       }));
 
-      let waveOffset = 0;
-
       function renderBackground() {
-        ctx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+        // Clear background to pure black
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
 
-        if (currentAnimation === 'particles') {
-          ctx.fillStyle = '#0f172a';
-          ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-          ctx.fillStyle = 'rgba(99, 102, 241, 0.5)';
+        // Draw active preset color particles
+        ctx.fillStyle = activeParticleColor;
 
-          particles.forEach(p => {
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-            ctx.fill();
-
-            p.x += p.dx;
-            p.y += p.dy;
-
-            if (p.x < 0 || p.x > bgCanvas.width) p.dx *= -1;
-            if (p.y < 0 || p.y > bgCanvas.height) p.dy *= -1;
-          });
-        } else if (currentAnimation === 'waves') {
-          waveOffset += 0.01;
-          const gradient = ctx.createLinearGradient(0, 0, bgCanvas.width, bgCanvas.height);
-          gradient.addColorStop(0, '#0f172a');
-          gradient.addColorStop(0.5, '#1e1b4b');
-          gradient.addColorStop(1, '#0f172a');
-          ctx.fillStyle = gradient;
-          ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-
-          ctx.fillStyle = 'rgba(99, 102, 241, 0.15)';
+        particles.forEach(p => {
+          ctx.globalAlpha = p.alpha;
           ctx.beginPath();
-          ctx.moveTo(0, bgCanvas.height);
-          for (let x = 0; x <= bgCanvas.width; x += 10) {
-            const y = Math.sin(x * 0.003 + waveOffset) * 40 + bgCanvas.height * 0.6;
-            ctx.lineTo(x, y);
-          }
-          ctx.lineTo(bgCanvas.width, bgCanvas.height);
-          ctx.closePath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
           ctx.fill();
-        }
 
-        if (currentAnimation !== 'custom') {
-          animationFrameId = requestAnimationFrame(renderBackground);
-        }
+          p.x += p.dx;
+          p.y += p.dy;
+
+          if (p.x < 0 || p.x > bgCanvas.width) p.dx *= -1;
+          if (p.y < 0 || p.y > bgCanvas.height) p.dy *= -1;
+        });
+
+        ctx.globalAlpha = 1.0;
+        requestAnimationFrame(renderBackground);
       }
 
-      bgSelect.addEventListener('change', (e) => {
-        const mode = e.target.value;
-        if (mode === 'custom') {
-          customBgInput.click();
-        } else {
-          currentAnimation = mode;
-          customBgVideo.style.display = 'none';
-          bgCanvas.style.display = 'block';
-          cancelAnimationFrame(animationFrameId);
-          renderBackground();
-        }
-      });
-
-      customBgInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          const url = URL.createObjectURL(file);
-          customBgVideo.src = url;
-          customBgVideo.style.display = 'block';
-          bgCanvas.style.display = 'none';
-          currentAnimation = 'custom';
-          cancelAnimationFrame(animationFrameId);
-        }
-      });
-
-      // Start default animation loop
+      // Start particle animation immediately on launch
       renderBackground();
     </script>
   </body>
