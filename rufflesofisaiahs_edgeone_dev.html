@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      SWF Player
+    </title>
+    <script src="https://cdn.jsdelivr.net/npm/@ruffle-rs/ruffle">
+    </script>
+    <style>
+      body { margin: 0; background: #121212; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+    #controls { margin-bottom: 15px; }
+    input[type=&#34;file&#34;] { background: #222; color: #fff; padding: 10px; border-radius: 8px; border: 1px solid #444; }
+    #player-container { width: 95vw; height: 75vh; max-width: 800px; max-height: 600px; border: 1px solid #333; background: #000; border-radius: 8px; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <div id="controls">
+      <input type="file" id="swf-input" accept=".swf" />
+    </div>
+    <div id="player-container">
+    </div>
+    <script>
+      const input = document.getElementById(&#39;swf-input&#39;);
+    const container = document.getElementById(&#39;player-container&#39;);
+
+    input.addEventListener(&#39;change&#39;, (e) =&gt; {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      container.innerHTML = &#39;&#39;;
+      const ruffle = window.RufflePlayer.newest();
+      const player = ruffle.createPlayer();
+      player.style.width = &#34;100%&#34;;
+      player.style.height = &#34;100%&#34;;
+      container.appendChild(player);
+
+      const reader = new FileReader();
+      reader.onload = (event) =&gt; {
+        player.load({ data: new Uint8Array(event.target.result) });
+      };
+      reader.readAsArrayBuffer(file);
+    });
+    </script>
+  </body>
+</html>
